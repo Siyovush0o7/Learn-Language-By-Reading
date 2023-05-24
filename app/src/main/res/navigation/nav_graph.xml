@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="uz.siyovush.learnlanguagebyreading.ui.home.HomeFragment"
+        android:label="fragment_home"
+        tools:layout="@layout/fragment_home" >
+        <action
+            android:id="@+id/action_homeFragment_to_readFragment"
+            app:destination="@id/readFragment">
+            <argument
+                app:argType="uz.siyovush.learnlanguagebyreading.data.database.entity.BookEntity"
+                android:name="book" />
+        </action>
+        <action
+            android:id="@+id/action_homeFragment_to_addBookFragment"
+            app:destination="@id/addBookFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/favoriteFragment"
+        android:name="uz.siyovush.learnlanguagebyreading.ui.favorite.FavoriteFragment"
+        android:label="fragment_favorite"
+        tools:layout="@layout/fragment_favorite" />
+    <fragment
+        android:id="@+id/readFragment"
+        android:name="uz.siyovush.learnlanguagebyreading.ui.read.ReadFragment"
+        android:label="fragment_read"
+        tools:layout="@layout/fragment_read" />
+    <fragment
+        android:id="@+id/dictionaryFragment"
+        android:name="uz.siyovush.learnlanguagebyreading.ui.dictionary.DictionaryFragment"
+        android:label="fragment_dictionary"
+        tools:layout="@layout/fragment_dictionary" />
+    <fragment
+        android:id="@+id/addBookFragment"
+        android:name="uz.siyovush.learnlanguagebyreading.ui.add_book.AddBookFragment"
+        android:label="fragment_add_book"
+        tools:layout="@layout/fragment_add_book" />
+</navigation>

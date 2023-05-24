@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">O\'qish orqali til o\'rganish</string>
+    <string name="action_settings">Sozlamalar</string>
+    <string name="next">Keyingi</string>
+    <string name="previous">Oldingi</string>
+    <string name="language">Til</string>
+    <string name="home">Bosh sahifa</string>
+    <string name="favorite">Tanlanganlar</string>
+    <string name="books">Kitoblar</string>
+    <string name="dictionary">Lug\'at</string>
+    <string name="search">Izlash</string>
+    <string name="add_book">Kitob qo\'shish</string>
+    <string name="book_title">Kitob nomi</string>
+    <string name="book_content">Kitob matni</string>
+    <string name="add">Qo\'shish</string>
+    <string name="pdf">pdf</string>
+    <string name="duplicate_book">You already have this book in your list</string>
+</resources>
