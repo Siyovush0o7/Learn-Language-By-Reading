@@ -57,24 +57,24 @@ class AddBookFragment : Fragment(R.layout.fragment_add_book) {
         }
 
     private val getContent =
-        registerForActivityResult(ActivityResultContracts.OpenDocument()) {
-            it?.let { selectedUri ->
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri?.let { selectedUri ->
                 requireActivity().contentResolver.takePersistableUriPermission(
                     selectedUri, Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
 
 
-                val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "sample.pdf")
-
-                val contentUri: Uri = FileProvider.getUriForFile(
-                    requireContext(),
-                    "uz.siyovush.learnlanguagebyreading.fileprovider",
-                    file
-                )
-
+                val file = selectedUri.getFilename(requireActivity().contentResolver)?.let {
+                    File(
+                        Environment.getExternalStorageDirectory(),
+                        it
+                    )
+                }
+                FileProvider()
+                val tempUri = Uri.fromFile(file)
                 val book = BookEntity(
                     binding.titleField.text.toString(),
-                    contentUri.toString(),
+                    tempUri.toString(),
                     bitmap
                 )
                 Toast.makeText(requireContext(), "added", Toast.LENGTH_SHORT).show()

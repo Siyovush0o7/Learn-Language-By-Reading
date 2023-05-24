@@ -7,7 +7,6 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.OpenableColumns
 import android.widget.Toast
-import androidx.core.content.FileProvider
 import com.itextpdf.text.pdf.PdfReader
 import com.itextpdf.text.pdf.parser.PdfTextExtractor
 import java.io.File

@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
 import android.speech.tts.TextToSpeech
 import android.text.Html
 import android.text.Spannable
@@ -20,7 +19,6 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -36,7 +34,6 @@ import uz.siyovush.learnlanguagebyreading.data.database.entity.BookEntity
 import uz.siyovush.learnlanguagebyreading.data.model.Language
 import uz.siyovush.learnlanguagebyreading.databinding.FragmentReadBinding
 import uz.siyovush.learnlanguagebyreading.util.extractData
-import java.io.File
 import java.text.BreakIterator
 import java.util.Locale
 
@@ -57,19 +54,8 @@ class ReadFragment : Fragment(R.layout.fragment_read) {
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
-                val file = File(
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    "sample.pdf"
-                )
-
-                val contentUri: Uri = FileProvider.getUriForFile(
-                    requireContext(),
-                    "uz.siyovush.learnlanguagebyreading.fileprovider",
-                    file
-                )
                 binding.textView.text =
-                    extractData(requireContext(), contentUri, currentPage)
-
+                    extractData(requireContext(), Uri.parse(book.file), currentPage)
             } else {
                 Toast.makeText(requireContext(), "Permission denied", Toast.LENGTH_SHORT).show()
             }
@@ -145,21 +131,8 @@ class ReadFragment : Fragment(R.layout.fragment_read) {
                     requireContext(),
                     Manifest.permission.READ_EXTERNAL_STORAGE
                 ) == PackageManager.PERMISSION_GRANTED -> {
-
-
-                    val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "sample.pdf")
-
-                    val contentUri: Uri = FileProvider.getUriForFile(
-                        requireContext(),
-                        "uz.siyovush.learnlanguagebyreading.fileprovider",
-                        file
-                    )
-                    binding.textView.text = extractData(
-                        requireContext(),
-                        contentUri,
-                        currentPage
-                    )
-
+                    binding.textView.text =
+                        extractData(requireContext(), Uri.parse(book.file), currentPage)
                     Toast.makeText(requireContext(), "Permission granted", Toast.LENGTH_SHORT)
                         .show()
                 }
