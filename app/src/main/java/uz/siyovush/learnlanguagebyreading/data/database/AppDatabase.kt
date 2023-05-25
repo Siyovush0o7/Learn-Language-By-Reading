@@ -3,7 +3,6 @@ package uz.siyovush.learnlanguagebyreading.data.database
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import uz.siyovush.learnlanguagebyreading.data.database.dao.BookDao
-import uz.siyovush.learnlanguagebyreading.data.database.dao.PdfFileDao
 import uz.siyovush.learnlanguagebyreading.data.database.dao.WordDao
 import uz.siyovush.learnlanguagebyreading.data.database.entity.BookEntity
 import uz.siyovush.learnlanguagebyreading.data.database.entity.WordTranslation
@@ -12,5 +11,4 @@ import uz.siyovush.learnlanguagebyreading.data.database.entity.WordTranslation
 abstract class AppDatabase : RoomDatabase() {
     abstract fun getWordDao(): WordDao
     abstract fun getBookDao(): BookDao
-    abstract fun getPdfFileDao(): PdfFileDao
 }

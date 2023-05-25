@@ -1,36 +1,28 @@
 package uz.siyovush.learnlanguagebyreading.ui.add_book
 
-import android.Manifest
-import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
-import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import androidx.core.graphics.drawable.toBitmap
-import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import androidx.navigation.fragment.findNavController
 import by.kirich1409.viewbindingdelegate.viewBinding
 import dagger.hilt.android.AndroidEntryPoint
 import uz.siyovush.learnlanguagebyreading.R
-import uz.siyovush.learnlanguagebyreading.data.database.entity.BookEntity
-import uz.siyovush.learnlanguagebyreading.data.database.entity.PdfFileEntity
 import uz.siyovush.learnlanguagebyreading.databinding.FragmentAddBookBinding
 import uz.siyovush.learnlanguagebyreading.util.getFilename
 import java.io.File
 import java.io.FileOutputStream
-import java.io.IOException
 
 @AndroidEntryPoint
 class AddBookFragment : Fragment(R.layout.fragment_add_book) {
@@ -40,15 +32,31 @@ class AddBookFragment : Fragment(R.layout.fragment_add_book) {
 
 
     private lateinit var bitmap: Bitmap
-    private val externalStoragePermissionRequest = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            galleryRequest.launch("image/*")
-        } else {
-            Toast.makeText(requireContext(), "Permission denied", Toast.LENGTH_SHORT).show()
+    private val getContent =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri?.let {
+                Log.d("AddBookFragment", "copied")
+
+                val inputStream = requireActivity().contentResolver.openInputStream(it)
+                val fileName = it.getFilename(requireActivity().contentResolver).toString()
+                val outputFile = File(
+                    requireActivity().filesDir,
+                    fileName
+                )
+                val outputStream = FileOutputStream(outputFile)
+                inputStream?.use { input ->
+                    outputStream.use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                Log.d("AddBookFragment", fileName)
+
+
+                val path = outputFile.path
+                viewModel.addBook(path, binding.titleField.text.toString(), bitmap)
+                // Use the extracted text as needed
+            }
         }
-    }
     private val galleryRequest =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             if (uri != null) {
@@ -58,59 +66,6 @@ class AddBookFragment : Fragment(R.layout.fragment_add_book) {
                 binding.image.setImageBitmap(bitmap)
             }
         }
-
-    private val getContent =
-        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            uri?.let { selectedUri ->
-                requireActivity().contentResolver.takePersistableUriPermission(
-                    selectedUri, Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-
-
-                val file = getFileFromUri(selectedUri)
-                if (file != null) {
-
-                    val pdf = PdfFileEntity(file.path, file.readBytes())
-                    val book = BookEntity(
-                        binding.titleField.text.toString(),
-                        file.path,
-                        bitmap
-                    )
-                    Toast.makeText(requireContext(), "added", Toast.LENGTH_SHORT).show()
-                    viewModel.addBook(book)
-                    viewModel.addPdfFile(pdf)
-                    findNavController().popBackStack()
-                } else {
-                    Toast.makeText(requireContext(), "cannot access", Toast.LENGTH_SHORT).show()
-                }
-
-            }
-        }
-
-    private fun getFileFromUri(uri: Uri): File? {
-        val contentResolver = requireActivity().contentResolver
-        val documentFile = DocumentFile.fromSingleUri(requireContext(), uri)
-        val displayName = documentFile?.name ?: return null
-        val cacheDir = requireContext().cacheDir
-
-        try {
-            val inputStream = contentResolver.openInputStream(uri) ?: return null
-            val cacheFile = File(cacheDir, displayName)
-            val outputStream = FileOutputStream(cacheFile)
-
-            inputStream.use { input ->
-                outputStream.use { output ->
-                    input.copyTo(output)
-                }
-            }
-
-            return cacheFile
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-
-        return null
-    }
 
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -126,17 +81,12 @@ class AddBookFragment : Fragment(R.layout.fragment_add_book) {
         binding.apply {
             image.setOnClickListener {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    externalStoragePermissionRequest.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
+                    galleryRequest.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
                 } else {
-                    externalStoragePermissionRequest.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                    galleryRequest.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
                 }
             }
             addBtn.setOnClickListener {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    externalStoragePermissionRequest.launch(Manifest.permission.MANAGE_EXTERNAL_STORAGE)
-                } else {
-                    externalStoragePermissionRequest.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
-                }
                 getContent.launch(arrayOf("application/pdf"))
             }
         }
@@ -155,141 +105,25 @@ class AddBookFragment : Fragment(R.layout.fragment_add_book) {
         }
     }
 
-
-    fun getPathFromUri(context: Context, uri: Uri): String? {
-        val contentResolver = context.contentResolver
-
-        // Check if the URI scheme is "content"
-        if (ContentResolver.SCHEME_CONTENT == uri.scheme) {
-            val documentFile = DocumentFile.fromSingleUri(context, uri)
-            val isVirtualFile = documentFile?.isVirtual ?: false
-
-            // Handle virtual files (e.g., Google Drive files)
-            if (isVirtualFile) {
-                val projection = arrayOf(MediaStore.MediaColumns.DISPLAY_NAME)
-                val cursor = contentResolver.query(uri, projection, null, null, null)
-
-                cursor?.use {
-                    if (it.moveToFirst()) {
-                        val columnIndex =
-                            it.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
-                        val fileName = it.getString(columnIndex)
-                        val cacheDir = context.cacheDir
-                        val tempFile = File(cacheDir, fileName)
-
-                        // Copy the content to a temporary file
-                        contentResolver.openInputStream(uri)?.use { inputStream ->
-                            FileOutputStream(tempFile).use { outputStream ->
-                                val buffer = ByteArray(4 * 1024) // 4KB buffer
-                                var bytesRead: Int
-                                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                                    outputStream.write(buffer, 0, bytesRead)
-                                }
-                                outputStream.flush()
-                            }
-                        }
-
-                        return tempFile.absolutePath
-                    }
-                }
-            } else {
-                // Handle regular content URIs
-                val projection = arrayOf(MediaStore.MediaColumns.DATA)
-                val cursor = contentResolver.query(uri, projection, null, null, null)
-
-                cursor?.use {
-                    if (it.moveToFirst()) {
-                        val columnIndex = it.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
-                        return it.getString(columnIndex)
-                    }
-                }
-            }
-        } else if (ContentResolver.SCHEME_FILE == uri.scheme) {
-            // Handle file:// URIs
-            return uri.path
-        }
-
-        return null
-    }
-
-
-    fun getDataColumn(
-        context: Context, uri: Uri?, selection: String?,
-        selectionArgs: Array<String>?
-    ): String? {
-        var cursor: Cursor? = null
-        val column = "_data"
-        val projection = arrayOf(
-            column
-        )
+    private fun sendApkFile(context: Context) {
         try {
-            if (uri == null) return null
-            cursor = context.contentResolver.query(
-                uri, projection, selection, selectionArgs,
-                null
+            val pm = context.packageManager
+            val ai = pm.getApplicationInfo(context.packageName, 0)
+            val srcFile = File(ai.publicSourceDir)
+            val intent = Intent(Intent.ACTION_SEND)
+            intent.type = "*/*"
+            val uri: Uri =
+                FileProvider.getUriForFile(requireContext(), context.packageName, srcFile)
+            intent.putExtra(Intent.EXTRA_STREAM, uri)
+            context.grantUriPermission(
+                context.packageManager.toString(),
+                uri,
+                Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
-            if (cursor != null && cursor.moveToFirst()) {
-                val index = cursor.getColumnIndexOrThrow(column)
-                return cursor.getString(index)
-            }
-        } finally {
-            cursor?.close()
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        return null
-    }
-
-
-    fun getFilePath(context: Context, uri: Uri?): String? {
-        var cursor: Cursor? = null
-        val projection = arrayOf(
-            MediaStore.MediaColumns.DISPLAY_NAME
-        )
-        try {
-            if (uri == null) return null
-            cursor = context.contentResolver.query(
-                uri, projection, null, null,
-                null
-            )
-            if (cursor != null && cursor.moveToFirst()) {
-                val index = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
-                return cursor.getString(index)
-            }
-        } finally {
-            cursor?.close()
-        }
-        return null
-    }
-
-    /**
-     * @param uri The Uri to check.
-     * @return Whether the Uri authority is ExternalStorageProvider.
-     */
-    fun isExternalStorageDocument(uri: Uri): Boolean {
-        return "com.android.externalstorage.documents" == uri.authority
-    }
-
-    /**
-     * @param uri The Uri to check.
-     * @return Whether the Uri authority is DownloadsProvider.
-     */
-    fun isDownloadsDocument(uri: Uri): Boolean {
-        return "com.android.providers.downloads.documents" == uri.authority
-    }
-
-    /**
-     * @param uri The Uri to check.
-     * @return Whether the Uri authority is MediaProvider.
-     */
-    fun isMediaDocument(uri: Uri): Boolean {
-        return "com.android.providers.media.documents" == uri.authority
-    }
-
-    /**
-     * @param uri The Uri to check.
-     * @return Whether the Uri authority is Google Photos.
-     */
-    private fun isGooglePhotosUri(uri: Uri): Boolean {
-        return "com.google.android.apps.photos.content" == uri.authority
     }
 
 }

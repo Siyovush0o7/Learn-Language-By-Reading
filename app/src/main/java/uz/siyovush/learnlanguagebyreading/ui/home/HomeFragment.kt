@@ -37,10 +37,10 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             recyclerView.layoutManager = LinearLayoutManager(requireContext())
             adapter.onClick = { book ->
                 lifecycleScope.launch {
-                    val pdf = viewModel.getPdfById(book.file)
+//                    val pdf = viewModel.getPdfById(book.file)
                     findNavController().navigate(
                         R.id.action_homeFragment_to_readFragment,
-                        bundleOf("book" to book, "pdf" to pdf)
+                        bundleOf("book" to book, ) //"pdf" to pdf
                     )
                 }
             }

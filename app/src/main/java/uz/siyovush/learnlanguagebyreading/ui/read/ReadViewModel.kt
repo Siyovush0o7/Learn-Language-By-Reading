@@ -1,5 +1,6 @@
 package uz.siyovush.learnlanguagebyreading.ui.read
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -67,5 +68,9 @@ class ReadViewModel @Inject constructor(
         CoroutineScope(Dispatchers.IO).launch {
             book.deleteById(id)
         }
+    }
+
+    fun addBook(uri: Uri, fileName: String?) {
+
     }
 }
