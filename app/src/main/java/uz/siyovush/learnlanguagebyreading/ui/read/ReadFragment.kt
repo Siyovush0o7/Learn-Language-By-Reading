@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.text.Html
@@ -28,12 +29,18 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import by.kirich1409.viewbindingdelegate.viewBinding
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import uz.siyovush.learnlanguagebyreading.R
+import uz.siyovush.learnlanguagebyreading.data.database.PdfDatabase
 import uz.siyovush.learnlanguagebyreading.data.database.entity.BookEntity
+import uz.siyovush.learnlanguagebyreading.data.database.entity.PdfFileEntity
 import uz.siyovush.learnlanguagebyreading.data.model.Language
 import uz.siyovush.learnlanguagebyreading.databinding.FragmentReadBinding
 import uz.siyovush.learnlanguagebyreading.util.extractData
+import java.io.FileInputStream
 import java.text.BreakIterator
 import java.util.Locale
 
@@ -48,18 +55,33 @@ class ReadFragment : Fragment(R.layout.fragment_read) {
     private var currentPage = 0
 
     private lateinit var book: BookEntity
+    private lateinit var pdf: PdfFileEntity
 
     private var gestureDetector: GestureDetector? = null
 
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            if (isGranted) {
-                binding.textView.text =
-                    extractData(requireContext(), Uri.parse(book.file), currentPage)
-            } else {
-                Toast.makeText(requireContext(), "Permission denied", Toast.LENGTH_SHORT).show()
-            }
-        }
+
+//    private val requestPermissionLauncher =
+//        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+//            if (isGranted) {
+//
+//                // Open a specific media item using ParcelFileDescriptor.
+////                val resolver = requireActivity().contentResolver
+//
+//// "rw" for read-and-write.
+//// "rwt" for truncating or overwriting existing file contents.
+////                val readOnlyMode = "r"
+////                resolver.openFileDescriptor(
+////                    Uri.parse(book.file), readOnlyMode
+////                ).use { pfd ->
+////                    val inputStream = FileInputStream(pfd?.fileDescriptor)
+////
+////                }
+//
+//
+//            } else {
+//                Toast.makeText(requireContext(), "Permission denied", Toast.LENGTH_SHORT).show()
+//            }
+//        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,6 +93,7 @@ class ReadFragment : Fragment(R.layout.fragment_read) {
             }
         }
         book = requireArguments().getParcelable<BookEntity>("book")!!
+
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -126,26 +149,53 @@ class ReadFragment : Fragment(R.layout.fragment_read) {
             toolbar.setNavigationOnClickListener {
                 findNavController().popBackStack()
             }
-            when {
-                ContextCompat.checkSelfPermission(
-                    requireContext(),
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-                ) == PackageManager.PERMISSION_GRANTED -> {
+//            when {
+//                ContextCompat.checkSelfPermission(
+//                    requireContext(),
+//                    Manifest.permission.READ_EXTERNAL_STORAGE
+//                ) == PackageManager.PERMISSION_GRANTED -> {
+//                    val resolver = requireActivity().contentResolver
+//
+//                    val readOnlyMode = "r"
+//                    resolver.openFileDescriptor(
+//                        Uri.parse(book.file), readOnlyMode
+//                    ).use { pfd ->
+//                        val inputStream = FileInputStream(pfd?.fileDescriptor)
+//                        binding.textView.text =
+//                            extractData(requireContext(), inputStream, currentPage)
+//                    }
+//                    Toast.makeText(requireContext(), "Permission granted", Toast.LENGTH_SHORT)
+//                        .show()
+//                }
+//
+//                shouldShowRequestPermissionRationale(Manifest.permission.MANAGE_EXTERNAL_STORAGE) -> {
+//                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+//                        requestPermissionLauncher.launch(Manifest.permission.MANAGE_EXTERNAL_STORAGE)
+//                    } else {
+//                        requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+//                    }
+//                }
+//
+//                else -> {
+//                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+//                        requestPermissionLauncher.launch(Manifest.permission.MANAGE_EXTERNAL_STORAGE)
+//                    } else {
+//                        requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+//                    }
+//                }
+//            }
+            CoroutineScope(Dispatchers.IO).launch {
+                val database = PdfDatabase.getInstance(requireContext())
+                val pdfFileDao = database.getPdfFileDao()
+
+// Use the DAO methods to access the data
+                val pdfFile = pdfFileDao.getPdfById(book.file)
+
+                withContext(Dispatchers.Main) {
                     binding.textView.text =
-                        extractData(requireContext(), Uri.parse(book.file), currentPage)
-                    Toast.makeText(requireContext(), "Permission granted", Toast.LENGTH_SHORT)
-                        .show()
-                }
-
-                shouldShowRequestPermissionRationale(Manifest.permission.READ_EXTERNAL_STORAGE) -> {
-                    // Handle rationale if needed
-                }
-
-                else -> {
-                    requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                        extractData(pdf.fileData, currentPage)
                 }
             }
-
             textView.movementMethod = ScrollingMovementMethod()
             textView.setOnTouchListener { v, event ->
                 gestureDetector?.onTouchEvent(event)

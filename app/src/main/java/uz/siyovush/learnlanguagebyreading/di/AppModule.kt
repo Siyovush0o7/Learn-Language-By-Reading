@@ -31,6 +31,7 @@ object AppModule {
     @Singleton
     fun provideBookDao(database: AppDatabase) = database.getBookDao()
 
+
     @Provides
     fun provideDictDatabase(
         @ApplicationContext context: Context,

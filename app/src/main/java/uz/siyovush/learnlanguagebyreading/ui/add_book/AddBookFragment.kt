@@ -1,5 +1,6 @@
 package uz.siyovush.learnlanguagebyreading.ui.add_book
 
+import android.Manifest
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
@@ -24,10 +25,12 @@ import by.kirich1409.viewbindingdelegate.viewBinding
 import dagger.hilt.android.AndroidEntryPoint
 import uz.siyovush.learnlanguagebyreading.R
 import uz.siyovush.learnlanguagebyreading.data.database.entity.BookEntity
+import uz.siyovush.learnlanguagebyreading.data.database.entity.PdfFileEntity
 import uz.siyovush.learnlanguagebyreading.databinding.FragmentAddBookBinding
 import uz.siyovush.learnlanguagebyreading.util.getFilename
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 
 @AndroidEntryPoint
 class AddBookFragment : Fragment(R.layout.fragment_add_book) {
@@ -64,24 +67,50 @@ class AddBookFragment : Fragment(R.layout.fragment_add_book) {
                 )
 
 
-                val file = selectedUri.getFilename(requireActivity().contentResolver)?.let {
-                    File(
-                        Environment.getExternalStorageDirectory(),
-                        it
+                val file = getFileFromUri(selectedUri)
+                if (file != null) {
+
+                    val pdf = PdfFileEntity(file.path, file.readBytes())
+                    val book = BookEntity(
+                        binding.titleField.text.toString(),
+                        file.path,
+                        bitmap
                     )
+                    Toast.makeText(requireContext(), "added", Toast.LENGTH_SHORT).show()
+                    viewModel.addBook(book)
+                    viewModel.addPdfFile(pdf)
+                    findNavController().popBackStack()
+                } else {
+                    Toast.makeText(requireContext(), "cannot access", Toast.LENGTH_SHORT).show()
                 }
-                FileProvider()
-                val tempUri = Uri.fromFile(file)
-                val book = BookEntity(
-                    binding.titleField.text.toString(),
-                    tempUri.toString(),
-                    bitmap
-                )
-                Toast.makeText(requireContext(), "added", Toast.LENGTH_SHORT).show()
-                viewModel.addBook(book)
-                findNavController().popBackStack()
+
             }
         }
+
+    private fun getFileFromUri(uri: Uri): File? {
+        val contentResolver = requireActivity().contentResolver
+        val documentFile = DocumentFile.fromSingleUri(requireContext(), uri)
+        val displayName = documentFile?.name ?: return null
+        val cacheDir = requireContext().cacheDir
+
+        try {
+            val inputStream = contentResolver.openInputStream(uri) ?: return null
+            val cacheFile = File(cacheDir, displayName)
+            val outputStream = FileOutputStream(cacheFile)
+
+            inputStream.use { input ->
+                outputStream.use { output ->
+                    input.copyTo(output)
+                }
+            }
+
+            return cacheFile
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+
+        return null
+    }
 
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -103,6 +132,11 @@ class AddBookFragment : Fragment(R.layout.fragment_add_book) {
                 }
             }
             addBtn.setOnClickListener {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    externalStoragePermissionRequest.launch(Manifest.permission.MANAGE_EXTERNAL_STORAGE)
+                } else {
+                    externalStoragePermissionRequest.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                }
                 getContent.launch(arrayOf("application/pdf"))
             }
         }

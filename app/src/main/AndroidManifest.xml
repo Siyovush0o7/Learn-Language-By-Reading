@@ -5,18 +5,19 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
 
     <application
         android:name=".App"
         android:allowBackup="true"
-        android:requestLegacyExternalStorage="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
+        android:enableOnBackInvokedCallback="true"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:requestLegacyExternalStorage="true"
         android:supportsRtl="true"
         android:theme="@style/Theme.LearnLanguageByReading"
         tools:targetApi="tiramisu">
