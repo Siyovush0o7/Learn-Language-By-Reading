@@ -76,10 +76,20 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
-    implementation 'com.itextpdf:itextg:5.5.10'
+//    implementation 'com.itextpdf:itextg:5.5.10'
 
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
 
+    implementation('com.tom-roush:pdfbox-android:2.0.27.0') {
+        exclude group: 'org.bouncycastle'
+    }
+
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.67'
+    implementation 'org.apache.pdfbox:pdfbox:2.0.28'
+    implementation 'com.github.ibrahimsn98:SmoothBottomBar:1.7.9'
+    implementation 'de.hdodenhof:circleimageview:3.1.0'
+
+    implementation "com.vanniktech:emoji-ios:0.16.0"
 
 }

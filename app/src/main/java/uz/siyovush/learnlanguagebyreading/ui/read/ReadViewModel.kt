@@ -21,8 +21,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ReadViewModel @Inject constructor(
     private val repository: TranslateRepository,
-    private val wordDao: WordDao,
-    private val book: BookDao
+    private val wordDao: WordDao
 ) : ViewModel() {
 
     private val _word = MutableStateFlow<TranslationResult?>(null)
@@ -37,10 +36,17 @@ class ReadViewModel @Inject constructor(
     fun onClickWord(text: String, sentence: String) = viewModelScope.launch {
         val wordReq = async { repository.translate(text, language.value.code) }
         val sentenceReq = async { repository.translate(sentence, language.value.code) }
+
+        val wordTranslation = wordReq.await()
+        val sentenceTranslation = sentenceReq.await()
+
         val isFavoriteReq = async { wordDao.isFavorite(text) }
-        _word.value =
-            TranslationResult(text, wordReq.await(), language.value.code, isFavoriteReq.await())
-        _sentence.value = sentenceReq.await()
+        val isFavorite = isFavoriteReq.await()
+
+        val translationResult = TranslationResult(text, wordTranslation, language.value.code, isFavorite)
+
+        _word.value = translationResult
+        _sentence.value = sentenceTranslation
     }
 
     fun changeLanguage(language: Language) {
@@ -62,15 +68,5 @@ class ReadViewModel @Inject constructor(
                 isFavorite = true
             )
         }
-    }
-
-    fun deleteBook(id: Long) {
-        CoroutineScope(Dispatchers.IO).launch {
-            book.deleteById(id)
-        }
-    }
-
-    fun addBook(uri: Uri, fileName: String?) {
-
     }
 }

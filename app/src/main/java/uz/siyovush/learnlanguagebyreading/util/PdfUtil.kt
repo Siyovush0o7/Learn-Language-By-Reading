@@ -6,19 +6,47 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.widget.Toast
-import androidx.core.content.FileProvider
-import com.itextpdf.text.pdf.PdfReader
-import com.itextpdf.text.pdf.parser.PdfTextExtractor
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
+import com.tom_roush.pdfbox.io.RandomAccessBufferedFileInputStream
+import com.tom_roush.pdfbox.io.RandomAccessFile
+import com.tom_roush.pdfbox.pdfparser.PDFParser
+import com.tom_roush.pdfbox.pdfwriter.COSWriter
+import com.tom_roush.pdfbox.text.PDFTextStripper
 import java.io.File
+import com.tom_roush.pdfbox.pdmodel.PDDocument
+import java.io.BufferedOutputStream
 
 
 fun extractData(context: Context, filePath: String, page: Int): String {
-    val reader =
-        PdfReader("/data/user/0/uz.suhrob.learnlanguagebyreading/files/NDASHERALIYEVISLOM.pdf")
-    val text = PdfTextExtractor.getTextFromPage(reader, page)
-    Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
-    reader.close()
+    PDFBoxResourceLoader.init(context)
+
+    val file = RandomAccessBufferedFileInputStream(filePath)
+    val parser = PDFParser(file)
+    parser.parse()
+
+    val document = parser.pdDocument
+    val stripper = PDFTextStripper()
+
+    stripper.startPage = page
+    stripper.endPage = page + 1
+
+    val text = stripper.getText(document)
+
+    document.close()
+    file.close()
+
     return text
+}
+
+
+fun getPageCount(filePath: String): Int {
+    val file = RandomAccessBufferedFileInputStream(filePath)
+    val parser = PDFParser(file)
+    parser.parse()
+
+    val document = parser.pdDocument
+    return document.numberOfPages
+
 }
 
 fun Uri.getFilename(contentResolver: ContentResolver): String? {

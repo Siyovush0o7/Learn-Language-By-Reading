@@ -1,12 +1,7 @@
 package uz.siyovush.learnlanguagebyreading.ui.read
 
-import android.Manifest
 import android.annotation.SuppressLint
-import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Color
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.text.Html
@@ -14,14 +9,14 @@ import android.text.Spannable
 import android.text.SpannableString
 import android.text.method.ScrollingMovementMethod
 import android.text.style.BackgroundColorSpan
+import android.text.style.ForegroundColorSpan
 import android.view.GestureDetector
 import android.view.GestureDetector.SimpleOnGestureListener
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import androidx.core.view.isVisible
+import androidx.core.graphics.drawable.DrawableCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -30,15 +25,25 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import by.kirich1409.viewbindingdelegate.viewBinding
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import uz.siyovush.learnlanguagebyreading.R
 import uz.siyovush.learnlanguagebyreading.data.database.entity.BookEntity
 import uz.siyovush.learnlanguagebyreading.data.model.Language
 import uz.siyovush.learnlanguagebyreading.databinding.FragmentReadBinding
+import uz.siyovush.learnlanguagebyreading.util.CustomDialog
+import uz.siyovush.learnlanguagebyreading.util.DialogJump
+import uz.siyovush.learnlanguagebyreading.util.PrefManager
+import uz.siyovush.learnlanguagebyreading.util.ProgressDialog
 import uz.siyovush.learnlanguagebyreading.util.extractData
-import java.io.File
+import uz.siyovush.learnlanguagebyreading.util.getPageCount
+import uz.siyovush.learnlanguagebyreading.util.hide
+import uz.siyovush.learnlanguagebyreading.util.show
 import java.text.BreakIterator
 import java.util.Locale
+import kotlin.properties.Delegates
 
 @AndroidEntryPoint
 class ReadFragment : Fragment(R.layout.fragment_read) {
@@ -48,23 +53,31 @@ class ReadFragment : Fragment(R.layout.fragment_read) {
 
     private lateinit var tts: TextToSpeech
     private var ttsInit = false
-    private var currentPage = 0
 
     private lateinit var book: BookEntity
 
     private var gestureDetector: GestureDetector? = null
 
+    private lateinit var word: String
+    private lateinit var sentence: String
+
+
+    private var sharedPref = PrefManager.Companion
+    private var currentPage by Delegates.notNull<Int>()
+    private var allPage by Delegates.notNull<Int>()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        book = requireArguments().getParcelable<BookEntity>("book")!!
+        currentPage = sharedPref.getPage(requireContext(), book.id)
+        allPage = getPageCount(book.file)
         tts = TextToSpeech(requireContext()) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 tts.language = Locale.US
                 ttsInit = true
             }
         }
-        book = requireArguments().getParcelable<BookEntity>("book")!!
 
     }
 
@@ -72,7 +85,8 @@ class ReadFragment : Fragment(R.layout.fragment_read) {
         super.onViewCreated(view, savedInstanceState)
 
         setupUI()
-        setupObservers()
+        val dialog = CustomDialog()
+        setupObservers(dialog)
 
         val extractedText =
             extractData(requireActivity(), book.file, currentPage)
@@ -80,6 +94,23 @@ class ReadFragment : Fragment(R.layout.fragment_read) {
 
         gestureDetector = GestureDetector(requireContext(), object : SimpleOnGestureListener() {
             override fun onDoubleTap(event: MotionEvent): Boolean {
+
+
+                dialog.show(parentFragmentManager)
+                dialog.onSave {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        viewModel.updateFavorite()
+                    }
+                }
+
+                dialog.onSpeak {
+                    if (ttsInit) {
+                        val word = viewModel.word.value?.original
+                        tts.speak(word, TextToSpeech.QUEUE_FLUSH, null, word)
+                    }
+                }
+
+
                 val offset: Int = binding.textView.getOffsetForPosition(event.x, event.y)
                 val text = binding.textView.text.toString()
                 if (offset > 0 && offset < text.length) {
@@ -102,13 +133,15 @@ class ReadFragment : Fragment(R.layout.fragment_read) {
                     spannable.setSpan(span, start, end, Spannable.SPAN_EXCLUSIVE_INCLUSIVE)
                     binding.textView.text = spannable
                     viewModel.onClickWord(word, sentence)
+                    this@ReadFragment.word = word
+                    this@ReadFragment.sentence = sentence
                 }
                 return true
             }
         })
     }
 
-    @SuppressLint("ClickableViewAccessibility", "SetTextI18n")
+    @SuppressLint("ClickableViewAccessibility", "SetTextI18n", "ResourceAsColor")
     private fun setupUI() {
         binding.apply {
             val menu = toolbar.menu
@@ -121,7 +154,50 @@ class ReadFragment : Fragment(R.layout.fragment_read) {
                     ?.let { viewModel.changeLanguage(it) }
                 true
             }
-            toolbar.title = book.title
+
+            current.setOnClickListener {
+                val dialog = DialogJump()
+                dialog.show(parentFragmentManager)
+                dialog.onStep {
+                    if (it in 1..allPage) {
+                        textView.text = extractData(requireContext(), book.file, it)
+                        currentPage = it
+                        val textPage = "$currentPage/$allPage"
+                        current.text = textPage
+                        sharedPref.setPage(requireContext(), book.id, currentPage)
+                    } else Toast.makeText(
+                        requireContext(),
+                        "Sahifa mavjud emas",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    dialog.hide()
+                }
+            }
+            tts = TextToSpeech(requireContext()) { status ->
+                if (status == TextToSpeech.SUCCESS) {
+                    tts.language = Locale.US
+                    ttsInit = true
+                }
+            }
+
+
+            val title = SpannableString(book.title)
+            title.setSpan(
+                ForegroundColorSpan(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.teal_700
+                    )
+                ), 0, title.length, 0
+            )
+            toolbar.title = title
+
+            // Set the back button with custom color
+            val backDrawable =
+                ContextCompat.getDrawable(requireContext(), R.drawable.ic_arrow_back)
+            val backColor = ContextCompat.getColor(requireContext(), R.color.teal_700)
+            backDrawable?.let { DrawableCompat.setTint(it, backColor) }
+            toolbar.navigationIcon = backDrawable
             toolbar.setNavigationOnClickListener {
                 findNavController().popBackStack()
             }
@@ -130,36 +206,67 @@ class ReadFragment : Fragment(R.layout.fragment_read) {
                 gestureDetector?.onTouchEvent(event)
                 v.performClick()
             }
-            speakBtn.setOnClickListener {
-                if (ttsInit) {
-                    val word = viewModel.word.value?.original ?: return@setOnClickListener
-                    tts.speak(word, TextToSpeech.QUEUE_FLUSH, null, word)
-                }
-            }
-            starBtn.setOnClickListener {
-                viewModel.updateFavorite()
-            }
-            deleteBtn.setOnClickListener {
-                viewModel.deleteBook(book.id.toLong())
-                findNavController().popBackStack()
+            current.text = "$currentPage/$allPage"
+            next.setOnClickListener {
+                if (currentPage in 1 until allPage) {
+                    val dialog = ProgressDialog()
+                    dialog.show(childFragmentManager)
+                    currentPage++
+                    sharedPref.setPage(requireContext(), book.id, currentPage)
+                    val textPage = "$currentPage/$allPage"
+                    current.text = textPage
+
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val extractedText =
+                            extractData(requireActivity(), book.file, currentPage)
+
+                        withContext(Dispatchers.Main) {
+                            textView.text = extractedText
+                            dialog.dismiss()
+                        }
+                    }
+                } else Toast.makeText(requireContext(), "last page !", Toast.LENGTH_SHORT)
+                    .show()
             }
 
+            previous.setOnClickListener {
+                if (currentPage in 2..allPage) {
+                    val dialog = ProgressDialog()
+                    dialog.show(childFragmentManager)
+                    currentPage--
+                    sharedPref.setPage(requireContext(), book.id, currentPage)
 
+                    val textPage = "$currentPage/$allPage"
+                    current.text = textPage
+
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val extractedText =
+                            extractData(requireActivity(), book.file, currentPage)
+
+                        withContext(Dispatchers.Main) {
+                            textView.text = extractedText
+                            dialog.dismiss()
+                        }
+                    }
+                } else Toast.makeText(requireContext(), "first page !", Toast.LENGTH_SHORT)
+                    .show()
+
+            }
         }
     }
 
-    private fun setupObservers() {
+    private fun setupObservers(dialog: CustomDialog) {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.word.collect { word ->
                         if (word == null) return@collect
-                        binding.translationRow.isVisible = true
-                        binding.translation.text =
-                            Html.fromHtml("${word.original} - ${word.translation}")
-                        binding.starBtn.setImageResource(
-                            if (word.isFavorite) R.drawable.ic_star else R.drawable.ic_star_outlined
-                        )
+                        dialog.textChange {
+                            return@textChange Pair(
+                                this@ReadFragment.word,
+                                Html.fromHtml(word.translation).toString()
+                            )
+                        }
                     }
                 }
                 launch {
@@ -175,13 +282,27 @@ class ReadFragment : Fragment(R.layout.fragment_read) {
                 }
                 launch {
                     viewModel.sentence.collect { sentence ->
-                        binding.sentenceTranslation.isVisible = true
-                        binding.sentenceTranslation.text = Html.fromHtml(sentence)
+                        if (sentence == "") return@collect
+                        dialog.sentenceChange {
+                            return@sentenceChange Pair(
+                                this@ReadFragment.sentence,
+                                Html.fromHtml(sentence).toString()
+                            )
+                        }
                     }
                 }
             }
         }
     }
+
+    override fun onPause() {
+        super.onPause()
+        gestureDetector = null
+        tts.stop()
+        tts.shutdown()
+    }
+
+
 
     override fun onDestroyView() {
         super.onDestroyView()

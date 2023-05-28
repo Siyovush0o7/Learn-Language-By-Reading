@@ -16,6 +16,7 @@ class ProgressDialog : DialogFragment(R.layout.custom_progress_indicator) {
                 this@ProgressDialog.context,
                 R.anim.progress_indicator_anim
             )
+
     }
 }
 

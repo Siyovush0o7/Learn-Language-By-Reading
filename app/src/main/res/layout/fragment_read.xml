@@ -21,87 +21,50 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <TextView
-        android:id="@+id/sentence_translation"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingHorizontal="8dp"
-        android:textSize="18sp"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/appbar" />
-
-    <LinearLayout
-        android:id="@+id/translation_row"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingHorizontal="8dp"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/sentence_translation">
-
-        <ImageView
-            android:id="@+id/speak_btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@drawable/ic_volume" />
-
-        <TextView
-            android:id="@+id/translation"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="4dp"
-            android:layout_weight="1"
-            android:textSize="18sp"
-            tools:text="abcd-abcd" />
-
-        <ImageView
-            android:id="@+id/star_btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@drawable/ic_star" />
-
-    </LinearLayout>
 
     <TextView
         android:id="@+id/text_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_marginBottom="20dp"
         android:paddingHorizontal="8dp"
         android:scrollbars="vertical"
         android:textSize="18sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/translation_row" />
+        app:layout_constraintBottom_toTopOf="@id/previous"
+        app:layout_constraintTop_toBottomOf="@+id/appbar" />
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/delete_btn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="30dp"
-        android:importantForAccessibility="no"
-        android:src="@drawable/baseline_delete_24"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
 
     <ImageView
         android:id="@+id/previous"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="30dp"
+        android:layout_marginBottom="20dp"
         android:src="@drawable/ic_arrow_back"
-        app:layout_constraintBottom_toBottomOf="@+id/delete_btn"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/delete_btn" />
+        app:tint="@color/teal_700" />
 
     <ImageView
+        android:id="@+id/next"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="30dp"
+        android:layout_marginBottom="20dp"
         android:rotation="180"
         android:src="@drawable/ic_arrow_back"
-        app:layout_constraintBottom_toBottomOf="@+id/delete_btn"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/delete_btn" />
+        app:tint="@color/teal_700" />
+
+    <TextView
+        android:id="@+id/current"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="2/233"
+        android:textColor="@color/teal_700"
+        app:layout_constraintBottom_toBottomOf="@id/next"
+        app:layout_constraintLeft_toRightOf="@id/previous"
+        app:layout_constraintRight_toLeftOf="@id/next" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

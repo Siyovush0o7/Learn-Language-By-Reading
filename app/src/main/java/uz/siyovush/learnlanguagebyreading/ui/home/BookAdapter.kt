@@ -6,11 +6,12 @@ import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import uz.siyovush.learnlanguagebyreading.data.database.entity.BookEntity
+import uz.siyovush.learnlanguagebyreading.data.model.Book
 import uz.siyovush.learnlanguagebyreading.databinding.BookItemBinding
 
 class BookAdapter : RecyclerView.Adapter<BookAdapter.BookViewHolder>() {
 
-    private val diffCallback = object: DiffUtil.ItemCallback<BookEntity>() {
+    private val diffCallback = object : DiffUtil.ItemCallback<BookEntity>() {
         override fun areItemsTheSame(oldItem: BookEntity, newItem: BookEntity): Boolean {
             return oldItem.title == newItem.title
         }
@@ -21,6 +22,7 @@ class BookAdapter : RecyclerView.Adapter<BookAdapter.BookViewHolder>() {
     }
     private val differ = AsyncListDiffer(this, diffCallback)
     var onClick: ((BookEntity) -> Unit)? = null
+    var onLongClick: ((BookEntity) -> Unit)? = null
 
     fun submit(list: List<BookEntity>) {
         differ.submitList(list)
@@ -44,11 +46,17 @@ class BookAdapter : RecyclerView.Adapter<BookAdapter.BookViewHolder>() {
         holder.bind(differ.currentList[position])
     }
 
-    inner class BookViewHolder(private val binding: BookItemBinding): RecyclerView.ViewHolder(binding.root) {
+    inner class BookViewHolder(private val binding: BookItemBinding) :
+        RecyclerView.ViewHolder(binding.root) {
         fun bind(book: BookEntity) {
             binding.root.setOnClickListener { onClick?.invoke(book) }
-            binding.bookName.text = book.title
+            binding.root.setOnLongClickListener {
+                onLongClick?.invoke(book)
+                true
+            }
+
             binding.bookImage.setImageBitmap(book.image)
+            binding.bookName.text = book.title
         }
     }
 }

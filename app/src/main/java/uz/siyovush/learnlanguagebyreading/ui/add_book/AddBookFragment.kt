@@ -16,6 +16,7 @@ import androidx.core.content.FileProvider
 import androidx.core.graphics.drawable.toBitmap
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import by.kirich1409.viewbindingdelegate.viewBinding
 import dagger.hilt.android.AndroidEntryPoint
 import uz.siyovush.learnlanguagebyreading.R
@@ -35,7 +36,6 @@ class AddBookFragment : Fragment(R.layout.fragment_add_book) {
     private val getContent =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             uri?.let {
-                Log.d("AddBookFragment", "copied")
 
                 val inputStream = requireActivity().contentResolver.openInputStream(it)
                 val fileName = it.getFilename(requireActivity().contentResolver).toString()
@@ -54,6 +54,7 @@ class AddBookFragment : Fragment(R.layout.fragment_add_book) {
 
                 val path = outputFile.path
                 viewModel.addBook(path, binding.titleField.text.toString(), bitmap)
+                findNavController().popBackStack()
                 // Use the extracted text as needed
             }
         }
@@ -75,19 +76,21 @@ class AddBookFragment : Fragment(R.layout.fragment_add_book) {
         val drawable = resources.getDrawable(R.drawable.book_placeholder)
         bitmap = drawable.toBitmap()
         binding.image.setImageBitmap(bitmap)
+
+        binding.toolbar.setNavigationOnClickListener {
+            findNavController().popBackStack()
+        }
     }
 
     private fun setupUi() {
         binding.apply {
             image.setOnClickListener {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    galleryRequest.launch(android.Manifest.permission.READ_MEDIA_IMAGES)
-                } else {
-                    galleryRequest.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-                }
+                galleryRequest.launch("image/*") // Pass the desired MIME type here, e.g., "image/*"
             }
             addBtn.setOnClickListener {
-                getContent.launch(arrayOf("application/pdf"))
+                if (binding.titleField.text.toString().isNotEmpty())
+                    getContent.launch(arrayOf("application/pdf"))
+                else binding.titleField.error = "Empty !"
             }
         }
     }
@@ -102,27 +105,6 @@ class AddBookFragment : Fragment(R.layout.fragment_add_book) {
             }
         } catch (e: Exception) {
             null
-        }
-    }
-
-    private fun sendApkFile(context: Context) {
-        try {
-            val pm = context.packageManager
-            val ai = pm.getApplicationInfo(context.packageName, 0)
-            val srcFile = File(ai.publicSourceDir)
-            val intent = Intent(Intent.ACTION_SEND)
-            intent.type = "*/*"
-            val uri: Uri =
-                FileProvider.getUriForFile(requireContext(), context.packageName, srcFile)
-            intent.putExtra(Intent.EXTRA_STREAM, uri)
-            context.grantUriPermission(
-                context.packageManager.toString(),
-                uri,
-                Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 
